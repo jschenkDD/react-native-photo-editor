@@ -10,9 +10,12 @@ import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Typeface;
+import android.media.MediaScannerConnection;
+import android.net.Uri;
 import android.os.Bundle;
 import android.os.CountDownTimer;
 import android.os.Environment;
+import android.provider.MediaStore;
 import android.support.annotation.NonNull;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.app.Fragment;
@@ -45,6 +48,7 @@ import com.viewpagerindicator.PageIndicator;
 
 import java.io.BufferedOutputStream;
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -54,11 +58,15 @@ import java.util.Date;
 import java.util.List;
 
 import ui.photoeditor.R;
+import ui.photoeditor.RNPhotoEditorModule;
+
 public class PhotoEditorActivity extends AppCompatActivity implements View.OnClickListener, OnPhotoEditorSDKListener {
 
     public static Typeface emojiFont = null;
 
     protected static final int MY_PERMISSIONS_REQUEST_WRITE_EXTERNAL_STORAGE_GALLERY = 0x1;
+
+    public static final String IMAGE_PATH_KEY = "imagePath";
 
     private final String TAG = "PhotoEditorActivity";
     private RelativeLayout parentImageRelativeLayout;
@@ -78,14 +86,16 @@ public class PhotoEditorActivity extends AppCompatActivity implements View.OnCli
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_photo_editor);
 
-        String selectedImagePath = getIntent().getExtras().getString("selectedImagePath");
+        Bundle extras = getIntent().getExtras();
+        String selectedImagePath = extras.getString("selectedImagePath");
 
         BitmapFactory.Options options = new BitmapFactory.Options();
-        options.inSampleSize = 1;
-        Bitmap bitmap = BitmapFactory.decodeFile(selectedImagePath, options);
+        options.inSampleSize = 2;
+        Bitmap bitmap = BitmapFactory.decodeFile(Uri.parse(selectedImagePath).getPath(), options);
+        Log.d("PhotoEditorActivity", Uri.parse(selectedImagePath).getPath());
 
         Typeface newFont = getFontFromRes(R.raw.eventtusicons);
-        emojiFont = getFontFromRes(R.raw.emojioneandroid);
+        //emojiFont = getFontFromRes(R.raw.emojioneandroid);
 
         BrushDrawingView brushDrawingView = (BrushDrawingView) findViewById(R.id.drawing_view);
         drawingViewColorPickerRecyclerView = (RecyclerView) findViewById(R.id.drawing_view_color_picker_recycler_view);
@@ -130,7 +140,7 @@ public class PhotoEditorActivity extends AppCompatActivity implements View.OnCli
         final List<Fragment> fragmentsList = new ArrayList<>();
 
         ImageFragment imageFragment = new ImageFragment();
-        ArrayList stickers = (ArrayList<Integer>) getIntent().getExtras().getSerializable("stickers");
+        ArrayList stickers = (ArrayList<Integer>) extras.getSerializable("stickers");
         if (stickers != null && stickers.size() > 0) {
             Bundle bundle = new Bundle();
             bundle.putSerializable("stickers", stickers);
@@ -177,21 +187,42 @@ public class PhotoEditorActivity extends AppCompatActivity implements View.OnCli
             }
         });
 
+        String doneText = extras.getString(RNPhotoEditorModule.DONE_TEXT);
+        String saveText = extras.getString(RNPhotoEditorModule.SAVE_TEXT);
+        String clearAllText = extras.getString(RNPhotoEditorModule.CLEAR_ALL_TEXT);
+        String undoText = extras.getString(RNPhotoEditorModule.UNDO_TEXT);
+        String eraseText = extras.getString(RNPhotoEditorModule.ERASE_TEXT);
+
         closeTextView.setOnClickListener(this);
         addImageEmojiTextView.setOnClickListener(this);
         addTextView.setOnClickListener(this);
         addPencil.setOnClickListener(this);
         saveTextView.setOnClickListener(this);
         saveTextTextView.setOnClickListener(this);
+        if (UtilFunctions.stringIsNotEmpty(saveText)) {
+            saveTextTextView.setText(saveText);
+        }
         undoTextView.setOnClickListener(this);
         undoTextTextView.setOnClickListener(this);
+        if (UtilFunctions.stringIsNotEmpty(undoText)) {
+            undoTextTextView.setText(undoText);
+        }
         doneDrawingTextView.setOnClickListener(this);
+        if (UtilFunctions.stringIsNotEmpty(doneText)) {
+            doneDrawingTextView.setText(doneText);
+        }
         eraseDrawingTextView.setOnClickListener(this);
+        if (UtilFunctions.stringIsNotEmpty(eraseText)) {
+            eraseDrawingTextView.setText(eraseText);
+        }
         clearAllTextView.setOnClickListener(this);
         clearAllTextTextView.setOnClickListener(this);
+        if (UtilFunctions.stringIsNotEmpty(clearAllText)) {
+            clearAllTextTextView.setText(clearAllText);
+        }
         goToNextTextView.setOnClickListener(this);
 
-        ArrayList<Integer> intentColors = (ArrayList<Integer>) getIntent().getExtras().getSerializable("colorPickerColors");
+        ArrayList<Integer> intentColors = (ArrayList<Integer>) extras.getSerializable("colorPickerColors");
 
         colorPickerColors = new ArrayList<>();
         if (intentColors != null) {
@@ -223,8 +254,8 @@ public class PhotoEditorActivity extends AppCompatActivity implements View.OnCli
 
         }.start();
 
-        ArrayList hiddenControls = (ArrayList<Integer>) getIntent().getExtras().getSerializable("hiddenControls");
-        for (int i = 0;i < hiddenControls.size();i++) {
+        ArrayList hiddenControls = (ArrayList<Integer>) extras.getSerializable("hiddenControls");
+        for (int i = 0; i < hiddenControls.size(); i++) {
             if (hiddenControls.get(i).toString().equalsIgnoreCase("text")) {
                 addTextView.setVisibility(View.INVISIBLE);
             }
@@ -294,6 +325,10 @@ public class PhotoEditorActivity extends AppCompatActivity implements View.OnCli
         View addTextPopupWindowRootView = inflater.inflate(R.layout.add_text_popup_window, null);
         final EditText addTextEditText = (EditText) addTextPopupWindowRootView.findViewById(R.id.add_text_edit_text);
         TextView addTextDoneTextView = (TextView) addTextPopupWindowRootView.findViewById(R.id.add_text_done_tv);
+        Bundle extras = getIntent().getExtras();
+        if (extras != null && UtilFunctions.stringIsNotEmpty(extras.getString(RNPhotoEditorModule.DONE_TEXT))) {
+            addTextDoneTextView.setText(extras.getString(RNPhotoEditorModule.DONE_TEXT));
+        }
         RecyclerView addTextColorPickerRecyclerView = (RecyclerView) addTextPopupWindowRootView.findViewById(R.id.add_text_color_picker_recycler_view);
         LinearLayoutManager layoutManager = new LinearLayoutManager(PhotoEditorActivity.this, LinearLayoutManager.HORIZONTAL, false);
         addTextColorPickerRecyclerView.setLayoutManager(layoutManager);
@@ -382,7 +417,7 @@ public class PhotoEditorActivity extends AppCompatActivity implements View.OnCli
                 public void onFinish() {
                     String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss").format(new Date());
                     String imageName = "IMG_" + timeStamp + ".jpg";
-
+                    Intent returnIntent = new Intent();
                     if (isSDCARDMounted()) {
                         String folderName = "PhotoEditorSDK";
                         File mediaStorageDir = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES), folderName);
@@ -406,9 +441,10 @@ public class PhotoEditorActivity extends AppCompatActivity implements View.OnCli
                         } catch (Exception var7) {
                             var7.printStackTrace();
                         }
+                        String filePath = file.getPath();
+                        notifyOnFileChanged(filePath);
+                        returnIntent.putExtra(IMAGE_PATH_KEY, filePath);
                     }
-
-                    Intent returnIntent = new Intent();
                     setResult(Activity.RESULT_OK, returnIntent);
                     finish();
                 }
@@ -432,12 +468,8 @@ public class PhotoEditorActivity extends AppCompatActivity implements View.OnCli
             }
 
             public void onFinish() {
-                String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss").format(new Date());
-                String imageName = "IMG_" + timeStamp + ".jpg";
-
                 String selectedImagePath = getIntent().getExtras().getString("selectedImagePath");
                 File file = new File(selectedImagePath);
-
                 try {
                     FileOutputStream out = new FileOutputStream(file);
                     if (parentImageRelativeLayout != null) {
@@ -450,13 +482,24 @@ public class PhotoEditorActivity extends AppCompatActivity implements View.OnCli
                 } catch (Exception var7) {
                     var7.printStackTrace();
                 }
-
+                String filePath = file.getPath();
+                notifyOnFileChanged(filePath);
                 Intent returnIntent = new Intent();
+                returnIntent.putExtra(IMAGE_PATH_KEY, filePath);
                 setResult(Activity.RESULT_OK, returnIntent);
-
                 finish();
             }
         }.start();
+    }
+
+    private void notifyOnFileChanged(String imagePath) {
+        MediaScannerConnection.scanFile(PhotoEditorActivity.this, new String[]{imagePath},
+                null, new MediaScannerConnection.OnScanCompletedListener() {
+                    @Override
+                    public void onScanCompleted(String path, Uri uri) {
+                        Log.d("MediaScanner", "onScanCompleted");
+                    }
+                });
     }
 
     private boolean isSDCARDMounted() {
@@ -465,9 +508,16 @@ public class PhotoEditorActivity extends AppCompatActivity implements View.OnCli
     }
 
     public void showPermissionRequest() {
+        Bundle extras = getIntent().getExtras();
+        String continueText = null;
+        String notNowText = null;
+        if (extras != null) {
+            continueText = extras.getString(RNPhotoEditorModule.CONTINUE_TEXT);
+            notNowText = extras.getString(RNPhotoEditorModule.NOT_NOW_TEXT);
+        }
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
         builder.setMessage(getString(R.string.access_media_permissions_msg));
-        builder.setPositiveButton(getString(R.string.continue_txt), new DialogInterface.OnClickListener() {
+        builder.setPositiveButton(UtilFunctions.stringIsNotEmpty(continueText) ? continueText : getString(R.string.continue_txt), new DialogInterface.OnClickListener() {
             @Override
             public void onClick(DialogInterface dialogInterface, int i) {
                 ActivityCompat.requestPermissions(PhotoEditorActivity.this,
@@ -475,7 +525,7 @@ public class PhotoEditorActivity extends AppCompatActivity implements View.OnCli
                         MY_PERMISSIONS_REQUEST_WRITE_EXTERNAL_STORAGE_GALLERY);
             }
         });
-        builder.setNegativeButton(getString(R.string.not_now), new DialogInterface.OnClickListener() {
+        builder.setNegativeButton(UtilFunctions.stringIsNotEmpty(notNowText) ? notNowText : getString(R.string.not_now), new DialogInterface.OnClickListener() {
             @Override
             public void onClick(DialogInterface dialogInterface, int i) {
                 Toast.makeText(PhotoEditorActivity.this, getString(R.string.media_access_denied_msg), Toast.LENGTH_SHORT).show();
@@ -620,26 +670,23 @@ public class PhotoEditorActivity extends AppCompatActivity implements View.OnCli
         }
     }
 
-    private Typeface getFontFromRes(int resource)
-    {
+    private Typeface getFontFromRes(int resource) {
         Typeface tf = null;
         InputStream is = null;
         try {
             is = getResources().openRawResource(resource);
-        }
-        catch(Resources.NotFoundException e) {
+        } catch (Resources.NotFoundException e) {
             Log.e(TAG, "Could not find font in resources!");
         }
 
         String outPath = getCacheDir() + "/tmp" + System.currentTimeMillis() + ".raw";
 
-        try
-        {
+        try {
             byte[] buffer = new byte[is.available()];
             BufferedOutputStream bos = new BufferedOutputStream(new FileOutputStream(outPath));
 
             int l = 0;
-            while((l = is.read(buffer)) > 0)
+            while ((l = is.read(buffer)) > 0)
                 bos.write(buffer, 0, l);
 
             bos.close();
@@ -648,9 +695,7 @@ public class PhotoEditorActivity extends AppCompatActivity implements View.OnCli
 
             // clean up
             new File(outPath).delete();
-        }
-        catch (IOException e)
-        {
+        } catch (IOException e) {
             Log.e(TAG, "Error reading in font!");
             return null;
         }

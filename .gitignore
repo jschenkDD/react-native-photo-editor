@@ -38,6 +38,8 @@ build/
 .gradle
 local.properties
 *.iml
+.vscode
+.eslintrc
 
 # BUCK
 buck-out/
@@ -47,3 +49,10 @@ buck-out/
 .history/*
 ios/Pods/*
 ios/Podfile.lock
+ios/RNPhotoEditor.xcworkspace/xcuserdata/*
+ios/RNPhotoEditor.xcworkspace/xcshareddata/*
+
+# Gradle
+android/gradle/
+android/gradlew
+android/gradlew.bat
