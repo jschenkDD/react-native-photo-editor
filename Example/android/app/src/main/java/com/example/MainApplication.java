@@ -3,9 +3,6 @@ package com.example;
 import android.app.Application;
 
 import com.facebook.react.ReactApplication;
-import ui.photoeditor.RNPhotoEditorPackage;
-import com.RNFetchBlob.RNFetchBlobPackage;
-import com.rnfs.RNFSPackage;
 import com.RNFetchBlob.RNFetchBlobPackage;
 import com.rnfs.RNFSPackage;
 import ui.photoeditor.RNPhotoEditorPackage;
@@ -29,9 +26,6 @@ public class MainApplication extends Application implements ReactApplication {
     protected List<ReactPackage> getPackages() {
       return Arrays.<ReactPackage>asList(
           new MainReactPackage(),
-            new RNPhotoEditorPackage(),
-            new RNFetchBlobPackage(),
-            new RNFSPackage(),
             new RNFetchBlobPackage(),
             new RNFSPackage(),
             new RNPhotoEditorPackage()

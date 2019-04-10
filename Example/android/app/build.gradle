@@ -138,9 +138,6 @@ android {
 }
 
 dependencies {
-    compile project(':react-native-photo-editor')
-    compile project(':rn-fetch-blob')
-    compile project(':react-native-fs')
     implementation project(':rn-fetch-blob')
     implementation project(':react-native-fs')
     implementation project(':react-native-photo-editor')
